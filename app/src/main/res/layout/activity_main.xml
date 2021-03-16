@@ -23,7 +23,6 @@
     </LinearLayout>
 
     <LinearLayout
-        android:id="@+id/LinearLayout03"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="5dp"
@@ -32,7 +31,7 @@
         android:orientation="horizontal">
 
         <TextView
-            android:id="@+id/tvname"
+            android:id="@+id/tv_name"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginLeft="20dp"
@@ -40,7 +39,7 @@
             android:gravity="center"
             android:textAppearance="?android:attr/textAppearanceMedium"
             android:textColor="@android:color/darker_gray"
-            tools:text="Cry on my shoulder" />
+            tools:text="Song's name" />
 
     </LinearLayout>
 
