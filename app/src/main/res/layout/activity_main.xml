@@ -38,7 +38,7 @@
             android:layout_marginRight="20dp"
             android:gravity="center"
             android:textAppearance="?android:attr/textAppearanceMedium"
-            android:textColor="@android:color/darker_gray"
+            android:textColor="@color/white"
             tools:text="Song's name" />
 
     </LinearLayout>
