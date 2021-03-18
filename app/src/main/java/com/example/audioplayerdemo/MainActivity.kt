@@ -32,7 +32,9 @@ class MainActivity : AppCompatActivity() {
         btn_forward.setOnClickListener { forward() }
         btn_rewind.setOnClickListener { rewind() }
         mediaPlayer.setOnCompletionListener {
-            mediaPlayer.reset()
+            mediaPlayer.seekTo(0)
+            mediaPlayer.pause()
+            playPauseToggle()
         }
 
         sb_music.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
@@ -84,6 +86,15 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun playPauseToggle() {
+        if (mediaPlayer.isPlaying){
+            btn_playpause.setBackgroundResource(R.drawable.ic_pause)
+        }
+        else {
+            btn_playpause.setBackgroundResource(R.drawable.ic_play)
+        }
+    }
+
     private fun Int.toTime(): String {
         val time = this.toLong()
         val minute = TimeUnit.MILLISECONDS.toMinutes(time)
@@ -117,11 +128,11 @@ class MainActivity : AppCompatActivity() {
     override fun onStop() {
         super.onStop()
         mediaPlayer.pause()
-        btn_playpause.setBackgroundResource(R.drawable.ic_play)
+        playPauseToggle()
     }
 
     override fun onResume() {
         super.onResume()
-        btn_playpause.setBackgroundResource(R.drawable.ic_play)
+        playPauseToggle()
     }
 }
