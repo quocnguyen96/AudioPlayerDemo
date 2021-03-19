@@ -24,7 +24,6 @@ class MainActivity : AppCompatActivity() {
         volumeControlStream = AudioManager.STREAM_MUSIC
         initPlayer()
         eventListener()
-
     }
 
     private fun eventListener() {
@@ -50,7 +49,7 @@ class MainActivity : AppCompatActivity() {
 
             }
 
-        })
+        }) 
     }
 
     private fun initPlayer() {
