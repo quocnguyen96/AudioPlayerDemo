@@ -127,7 +127,7 @@
                 android:layout_width="@dimen/btn_size"
                 android:layout_height="@dimen/btn_size"
                 android:layout_marginRight="10dp"
-                android:background="@drawable/forward" />
+                android:background="@drawable/ic_forward" />
 
             <androidx.appcompat.widget.AppCompatButton
                 android:id="@+id/btn_next"
