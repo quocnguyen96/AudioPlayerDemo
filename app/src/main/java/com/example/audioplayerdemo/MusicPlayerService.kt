@@ -13,8 +13,8 @@ import android.os.*
 import android.support.v4.media.MediaBrowserCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
-import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
+import androidx.lifecycle.MutableLiveData
 import androidx.media.MediaBrowserServiceCompat
 import androidx.media.session.MediaButtonReceiver
 import kotlinx.coroutines.CoroutineScope
@@ -22,34 +22,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-const val ACTUAL_TIME_VALUE_EXTRA_1 = ""
-
 class MusicPlayerService : MediaBrowserServiceCompat() {
 
-    private val NOTIFICATION_ID = 345
-
-    private val ACTION_PLAY = "audioplayerdemo.action.ACTION_PLAY"
-    private val ACTION_PAUSE = "audioplayerdemo.action.ACTION_PAUSE"
-    private val ACTION_FORWARD = "audioplayerdemo.action.ACTION_FORWARD"
-    private val ACTION_REWIND = "audioplayerdemo.action.ACTION_REWIND"
-    private val ACTION_SEEK_TO = "audioplayerdemo.action.ACTION_SEEK_TO"
-
-    private val EXTRA_TIME = "audioplayerdemo.action.EXTRA_TIME"
-
-    val GUI_UPDATE_ACTION = "GUI_UPDATE_ACTION"
-    val INIT_PLAYER_ACTION = "INIT_PLAYER_ACTION"
-    val ACTUAL_TIME_VALUE_EXTRA = "ACTUAL_TIME_VALUE_EXTRA"
-    val TOTAL_TIME_VALUE_EXTRA = "TOTAL_TIME_VALUE_EXTRA"
-    val PLAY_ACTION = "PLAY_ACTION"
-    val PAUSE_ACTION = "PAUSE_ACTION"
-    val DELETE_ACTION = "DELETE_ACTION"
-    val COMPLETE_ACTION = "DELETE_ACTION"
-    val FORWARD_ACTION = "FORWARD_ACTION"
-    val REWIND_ACTION = "REWIND"
-
     private lateinit var mediaSessionCompat: MediaSessionCompat
-
-    private lateinit var mHandler: Handler
 
     private var timeElapsed = 0
     private val jumpTime = 2000
@@ -59,6 +34,9 @@ class MusicPlayerService : MediaBrowserServiceCompat() {
 
     companion object {
         var mediaPlayer: MediaPlayer? = MediaPlayer()
+        val playStatus: MutableLiveData<Boolean> = MutableLiveData()
+        val totalTime: MutableLiveData<Int> = MutableLiveData()
+        val actualTime: MutableLiveData<Int> = MutableLiveData()
     }
 
     private var mediaSessionCallback = object : MediaSessionCompat.Callback() {
@@ -101,29 +79,12 @@ class MusicPlayerService : MediaBrowserServiceCompat() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
 
-        mHandler = Handler(Looper.getMainLooper())
-
-        if (intent != null) {
-
-            if (intent.action!! == ACTION_PLAY) {
-                play()
-            }
-
-            if (intent.action!! == ACTION_PAUSE) {
-                mediaPlayer?.pause()
-            }
-
-            if (intent.action!! == ACTION_REWIND) {
-                rewind()
-            }
-
-            if (intent.action!! == ACTION_FORWARD) {
-                forward()
-
-            } else {
-                MediaButtonReceiver.handleIntent(mediaSessionCompat, intent)
-            }
-
+        when (intent?.action) {
+            ACTION_PLAY -> play()
+            ACTION_PAUSE -> pause()
+            ACTION_REWIND -> rewind()
+            ACTION_FORWARD -> forward()
+            else -> MediaButtonReceiver.handleIntent(mediaSessionCompat, intent)
         }
 
         return START_NOT_STICKY
@@ -149,30 +110,32 @@ class MusicPlayerService : MediaBrowserServiceCompat() {
 
     private fun initPlayer() {
         mediaPlayer = MediaPlayer.create(applicationContext, R.raw.music)
-        val updateIntent = Intent()
         mediaPlayer?.setOnCompletionListener {
-            updateIntent.action = COMPLETE_ACTION
-            sendBroadcast(updateIntent)
+//            playStatus.postValue(false)
+            setMediaPlaybackState(PlaybackStateCompat.STATE_PAUSED)
+//            mediaPlayer?.reset()
         }
-        updateIntent.action = INIT_PLAYER_ACTION
-        updateIntent.putExtra(TOTAL_TIME_VALUE_EXTRA, mediaPlayer?.duration)
-        sendBroadcast(updateIntent)
+        totalTime.postValue(mediaPlayer?.duration)
     }
 
     private fun forward() {
         mediaPlayer?.let {
+            timeElapsed = it.currentPosition
             if (timeElapsed + jumpTime <= it.duration) {
                 timeElapsed += jumpTime
-                mediaPlayer?.seekTo(timeElapsed)
+                seekTo(timeElapsed)
             }
         }
 
     }
 
     private fun rewind() {
-        if (timeElapsed - jumpTime > 0) {
-            timeElapsed -= jumpTime
-            mediaPlayer?.seekTo(timeElapsed)
+        mediaPlayer?.let {
+            timeElapsed = it.currentPosition
+            if (timeElapsed - jumpTime > 0) {
+                timeElapsed -= jumpTime
+                seekTo(timeElapsed)
+            }
         }
     }
 
@@ -181,29 +144,21 @@ class MusicPlayerService : MediaBrowserServiceCompat() {
         mediaSessionCompat.isActive = true
         mediaPlayer?.start()
         startUiUpdate()
-        val updateIntent = Intent()
-        updateIntent.action = PLAY_ACTION
-        sendBroadcast(updateIntent)
+        playStatus.postValue(true)
         makeNotification()
-
     }
 
     private fun pause() {
         mediaPlayer?.pause()
         setMediaPlaybackState(PlaybackStateCompat.STATE_PAUSED)
         isUpdatingThread = false
-        val updateIntent = Intent()
-        updateIntent.action = PAUSE_ACTION
-        sendBroadcast(updateIntent)
         makeNotification()
+        playStatus.postValue(false)
     }
 
     private fun seekTo(time: Int) {
         mediaPlayer?.seekTo(time)
-        val updateIntent = Intent()
-        updateIntent.action = GUI_UPDATE_ACTION
-        updateIntent.putExtra(ACTUAL_TIME_VALUE_EXTRA, mediaPlayer?.currentPosition)
-        sendBroadcast(updateIntent)
+        actualTime.postValue(mediaPlayer?.currentPosition)
     }
 
     private fun setMediaPlaybackState(state: Int) {
@@ -222,11 +177,8 @@ class MusicPlayerService : MediaBrowserServiceCompat() {
     }
 
     private fun initMediaSession() {
-        val mediaButtonReceiver =
-            ComponentName(this, MediaButtonReceiver::class.java)
-        mediaSessionCompat =
-            MediaSessionCompat(applicationContext, "MediaTAG", mediaButtonReceiver, null)
-
+        val mediaButtonReceiver = ComponentName(this, MediaButtonReceiver::class.java)
+        mediaSessionCompat = MediaSessionCompat(applicationContext, "MediaTAG", mediaButtonReceiver, null)
         mediaSessionCompat.setCallback(mediaSessionCallback)
         mediaSessionCompat.setFlags(
             MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS or
@@ -242,6 +194,7 @@ class MusicPlayerService : MediaBrowserServiceCompat() {
 
         val mediaButtonIntent = Intent(Intent.ACTION_MEDIA_BUTTON)
         mediaButtonIntent.setClass(this, MediaButtonReceiver::class.java)
+
         val pendingIntent = PendingIntent.getBroadcast(this, 0, mediaButtonIntent, 0)
         mediaSessionCompat.setMediaButtonReceiver(pendingIntent)
 
@@ -253,12 +206,9 @@ class MusicPlayerService : MediaBrowserServiceCompat() {
     private fun startUiUpdate() {
         isUpdatingThread = true
         CoroutineScope(Dispatchers.Main).launch {
-            val guiUpdateIntent = Intent()
-            guiUpdateIntent.action = GUI_UPDATE_ACTION
             delay(50)
             while (isUpdatingThread) {
-                guiUpdateIntent.putExtra(ACTUAL_TIME_VALUE_EXTRA, mediaPlayer?.currentPosition)
-                sendBroadcast(guiUpdateIntent)
+                actualTime.postValue(mediaPlayer?.currentPosition)
                 delay(200)
             }
         }
@@ -280,6 +230,7 @@ class MusicPlayerService : MediaBrowserServiceCompat() {
             manager.createNotificationChannel(chan)
         }
         builder?.setSmallIcon(R.drawable.ic_music_note)
+
         val pplayIntent: PendingIntent? =  mediaPlayer?.let {
             if (it.isPlaying) {
                 MediaButtonReceiver.buildMediaButtonPendingIntent(this, PlaybackStateCompat.ACTION_PAUSE)
@@ -308,8 +259,7 @@ class MusicPlayerService : MediaBrowserServiceCompat() {
             )
         )
 
-        val deleteIntent =
-            Intent(this, MusicPlayerService::class.java)
+        val deleteIntent = Intent(this, MusicPlayerService::class.java)
         deleteIntent.action = DELETE_ACTION
         val pdeleteIntent = PendingIntent.getService(
             this, 0,
@@ -329,38 +279,22 @@ class MusicPlayerService : MediaBrowserServiceCompat() {
         )
         builder?.setDeleteIntent(pdeleteIntent)
 
-        val mNotificationManager =
-            getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-//        if (mediaPlayer.isPlaying) {
-            startForeground(NOTIFICATION_ID, builder?.build())
-//        } else {
-//            stopForeground(false)
-//            mNotificationManager.notify(NOTIFICATION_ID, builder?.build())
-//        }
-    }
-
-    @RequiresApi(Build.VERSION_CODES.O)
-    private fun startMyOwnForeground() {
-        val NOTIFICATION_CHANNEL_ID = "ServiceChanelId"
-        val channelName = "My Background Service"
-        val chan = NotificationChannel(
-            NOTIFICATION_CHANNEL_ID,
-            channelName,
-            NotificationManager.IMPORTANCE_NONE
+        val notificationIntent = Intent(this, MainActivity::class.java)
+        notificationIntent.flags = (Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        val intent = PendingIntent.getActivity(
+            this, 0,
+            notificationIntent, 0
         )
-        chan.lightColor = Color.BLUE
-        chan.lockscreenVisibility = Notification.VISIBILITY_PRIVATE
-        val manager =
-            (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
-        manager.createNotificationChannel(chan)
+        builder?.setContentIntent(intent)
 
-        val notificationBuilder = MediaStyleHelper().from(this, mediaSessionCompat)
-        val notification: Notification = notificationBuilder!!.setOngoing(true)
-            .setSmallIcon(R.drawable.ic_music_note)
-            .setPriority(NotificationManager.IMPORTANCE_MIN)
-            .setCategory(Notification.CATEGORY_SERVICE)
-            .build()
-        startForeground(2, notification)
+        startForeground(NOTIFICATION_ID, builder?.build())
+//        val mNotificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+//        mediaPlayer?.let {
+//            if (!it.isPlaying) {
+//                stopForeground(false)
+//                mNotificationManager.notify(NOTIFICATION_ID, builder?.build())
+//            }
+//        }
     }
 
     private fun cancelNotification() {
@@ -369,24 +303,26 @@ class MusicPlayerService : MediaBrowserServiceCompat() {
     }
 
     fun startActionPlay(context: Context) {
-        val intent =
-            Intent(context, MusicPlayerService::class.java)
+        val intent = Intent(context, MusicPlayerService::class.java)
         intent.action = ACTION_PLAY
         context.startService(intent)
     }
 
     fun startActionPause(context: Context) {
-        val intent =
-            Intent(context, MusicPlayerService::class.java)
+        val intent = Intent(context, MusicPlayerService::class.java)
         intent.action = ACTION_PAUSE
         context.startService(intent)
     }
 
-    fun startActionSeekTo(context: Context, time: Int) {
-        val intent =
-            Intent(context, MusicPlayerService::class.java)
-        intent.action = ACTION_SEEK_TO
-        intent.putExtra(EXTRA_TIME, time)
+    fun startActionRewind(context: Context) {
+        val intent = Intent(context, MusicPlayerService::class.java)
+        intent.action = ACTION_REWIND
+        context.startService(intent)
+    }
+
+    fun startActionForward(context: Context) {
+        val intent = Intent(context, MusicPlayerService::class.java)
+        intent.action = ACTION_FORWARD
         context.startService(intent)
     }
 
@@ -396,7 +332,7 @@ class MusicPlayerService : MediaBrowserServiceCompat() {
         mediaPlayer = null
         isUpdatingThread = false
         stopForeground(true)
-        cancelNotification()
+//        cancelNotification()
         mediaSessionCompat.release()
         mediaSessionCompat.isActive = false
     }
