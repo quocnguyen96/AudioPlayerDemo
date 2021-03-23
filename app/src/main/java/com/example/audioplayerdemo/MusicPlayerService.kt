@@ -13,6 +13,7 @@ import android.os.*
 import android.support.v4.media.MediaBrowserCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
+import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.MutableLiveData
 import androidx.media.MediaBrowserServiceCompat
@@ -90,7 +91,10 @@ class MusicPlayerService : MediaBrowserServiceCompat() {
         return START_NOT_STICKY
     }
 
-    override fun onLoadChildren(parentId: String, result: Result<MutableList<MediaBrowserCompat.MediaItem>>) {
+    override fun onLoadChildren(
+        parentId: String,
+        result: Result<MutableList<MediaBrowserCompat.MediaItem>>
+    ) {
         TODO("Not yet implemented")
     }
 
@@ -111,9 +115,9 @@ class MusicPlayerService : MediaBrowserServiceCompat() {
     private fun initPlayer() {
         mediaPlayer = MediaPlayer.create(applicationContext, R.raw.music)
         mediaPlayer?.setOnCompletionListener {
-//            playStatus.postValue(false)
-            setMediaPlaybackState(PlaybackStateCompat.STATE_PAUSED)
-//            mediaPlayer?.reset()
+            playStatus.postValue(false)
+            mediaPlayer?.seekTo(0)
+            makeNotification()
         }
         totalTime.postValue(mediaPlayer?.duration)
     }
@@ -126,7 +130,6 @@ class MusicPlayerService : MediaBrowserServiceCompat() {
                 seekTo(timeElapsed)
             }
         }
-
     }
 
     private fun rewind() {
@@ -222,24 +225,32 @@ class MusicPlayerService : MediaBrowserServiceCompat() {
             val chan = NotificationChannel(
                 NOTIFICATION_CHANNEL_ID,
                 channelName,
-                NotificationManager.IMPORTANCE_NONE
+                NotificationManager.IMPORTANCE_LOW
             )
             chan.lightColor = Color.BLUE
             chan.lockscreenVisibility = Notification.VISIBILITY_PRIVATE
             val manager = (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
             manager.createNotificationChannel(chan)
         }
+
         builder?.setSmallIcon(R.drawable.ic_music_note)
 
-        val pplayIntent: PendingIntent? =  mediaPlayer?.let {
+        val pplayIntent: PendingIntent? = mediaPlayer?.let {
             if (it.isPlaying) {
-                MediaButtonReceiver.buildMediaButtonPendingIntent(this, PlaybackStateCompat.ACTION_PAUSE)
+                MediaButtonReceiver.buildMediaButtonPendingIntent(
+                    this,
+                    PlaybackStateCompat.ACTION_PAUSE
+                )
             } else {
-                MediaButtonReceiver.buildMediaButtonPendingIntent(this, PlaybackStateCompat.ACTION_PLAY)
+                MediaButtonReceiver.buildMediaButtonPendingIntent(
+                    this,
+                    PlaybackStateCompat.ACTION_PLAY
+                )
             }
         }
 
-        builder?.addAction(R.drawable.ic_rewind, "Rewind", MediaButtonReceiver.buildMediaButtonPendingIntent(
+        builder?.addAction(
+            R.drawable.ic_noti_rewind, "Rewind", MediaButtonReceiver.buildMediaButtonPendingIntent(
                 this,
                 PlaybackStateCompat.ACTION_REWIND
             )
@@ -247,13 +258,16 @@ class MusicPlayerService : MediaBrowserServiceCompat() {
 
         mediaPlayer?.let {
             if (it.isPlaying) {
-                builder?.addAction(R.drawable.ic_pause, "Pause", pplayIntent)
+                builder?.addAction(R.drawable.ic_noti_pause, "Pause", pplayIntent)
             } else {
-                builder?.addAction(R.drawable.ic_play, "Play", pplayIntent)
+                builder?.addAction(R.drawable.ic_noti_play, "Play", pplayIntent)
             }
         }
 
-        builder?.addAction(R.drawable.ic_forward, "Forward", MediaButtonReceiver.buildMediaButtonPendingIntent(
+        builder?.addAction(
+            R.drawable.ic_noti_forward,
+            "Forward",
+            MediaButtonReceiver.buildMediaButtonPendingIntent(
                 this,
                 PlaybackStateCompat.ACTION_FAST_FORWARD
             )
@@ -280,7 +294,8 @@ class MusicPlayerService : MediaBrowserServiceCompat() {
         builder?.setDeleteIntent(pdeleteIntent)
 
         val notificationIntent = Intent(this, MainActivity::class.java)
-        notificationIntent.flags = (Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        notificationIntent.flags =
+            (Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
         val intent = PendingIntent.getActivity(
             this, 0,
             notificationIntent, 0
@@ -298,7 +313,8 @@ class MusicPlayerService : MediaBrowserServiceCompat() {
     }
 
     private fun cancelNotification() {
-        val mNotificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val mNotificationManager =
+            getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         mNotificationManager.cancel(NOTIFICATION_ID)
     }
 

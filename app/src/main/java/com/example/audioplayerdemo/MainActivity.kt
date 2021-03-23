@@ -2,6 +2,7 @@ package com.example.audioplayerdemo
 
 import android.media.AudioManager
 import android.os.Bundle
+import android.util.Log
 import android.widget.SeekBar
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Observer
@@ -29,14 +30,16 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
-        MusicPlayerService.actualTime.observe(this, Observer {
-            sb_music.progress = it
-            tv_current_time.text = milliToTime(it)
-        })
-
         MusicPlayerService.totalTime.observe(this, Observer {
+            Log.d("TAG", "initObserver: max $it")
             sb_music.max = it
             tv_total_time.text = milliToTime(it)
+        })
+
+        MusicPlayerService.actualTime.observe(this, Observer {
+            Log.d("TAG", "initObserver: $it")
+            tv_current_time.text = milliToTime(it)
+            sb_music.progress = it
         })
     }
 
@@ -46,13 +49,13 @@ class MainActivity : AppCompatActivity() {
         btn_rewind.setOnClickListener { rewind() }
 
         sb_music.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            var time = 0
+
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                time = progress
                 if (fromUser) MusicPlayerService.mediaPlayer?.seekTo(progress)
             }
 
             override fun onStartTrackingTouch(seekBar: SeekBar?) {
+
             }
 
             override fun onStopTrackingTouch(seekBar: SeekBar?) {
