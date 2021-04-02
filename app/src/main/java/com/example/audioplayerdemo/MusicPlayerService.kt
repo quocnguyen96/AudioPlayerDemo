@@ -13,7 +13,6 @@ import android.os.*
 import android.support.v4.media.MediaBrowserCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
-import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.MutableLiveData
 import androidx.media.MediaBrowserServiceCompat
@@ -218,24 +217,25 @@ class MusicPlayerService : MediaBrowserServiceCompat() {
     }
 
     private fun makeNotification() {
-        val builder: NotificationCompat.Builder? = MediaStyleHelper().from(this, mediaSessionCompat)
+        val builder: NotificationCompat.Builder? = MediaStyleHelper.from(this, mediaSessionCompat)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val NOTIFICATION_CHANNEL_ID = "ServiceChanelId"
+            val channelId = "ServiceChanelId"
             val channelName = "My Background Service"
-            val chan = NotificationChannel(
-                NOTIFICATION_CHANNEL_ID,
+            val channel = NotificationChannel(
+                channelId,
                 channelName,
                 NotificationManager.IMPORTANCE_LOW
             )
-            chan.lightColor = Color.BLUE
-            chan.lockscreenVisibility = Notification.VISIBILITY_PRIVATE
+            channel.lightColor = Color.BLUE
+            channel.lockscreenVisibility = Notification.VISIBILITY_PRIVATE
             val manager = (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
-            manager.createNotificationChannel(chan)
+            manager.createNotificationChannel(channel)
+            builder?.setChannelId(channelId)
         }
 
         builder?.setSmallIcon(R.drawable.ic_music_note)
 
-        val pplayIntent: PendingIntent? = mediaPlayer?.let {
+        val playPendingIntent: PendingIntent? = mediaPlayer?.let {
             if (it.isPlaying) {
                 MediaButtonReceiver.buildMediaButtonPendingIntent(
                     this,
@@ -258,9 +258,9 @@ class MusicPlayerService : MediaBrowserServiceCompat() {
 
         mediaPlayer?.let {
             if (it.isPlaying) {
-                builder?.addAction(R.drawable.ic_noti_pause, "Pause", pplayIntent)
+                builder?.addAction(R.drawable.ic_noti_pause, "Pause", playPendingIntent)
             } else {
-                builder?.addAction(R.drawable.ic_noti_play, "Play", pplayIntent)
+                builder?.addAction(R.drawable.ic_noti_play, "Play", playPendingIntent)
             }
         }
 
@@ -271,13 +271,6 @@ class MusicPlayerService : MediaBrowserServiceCompat() {
                 this,
                 PlaybackStateCompat.ACTION_FAST_FORWARD
             )
-        )
-
-        val deleteIntent = Intent(this, MusicPlayerService::class.java)
-        deleteIntent.action = DELETE_ACTION
-        val pdeleteIntent = PendingIntent.getService(
-            this, 0,
-            deleteIntent, 0
         )
 
         builder?.setStyle(
@@ -291,7 +284,6 @@ class MusicPlayerService : MediaBrowserServiceCompat() {
                     )
                 )
         )
-        builder?.setDeleteIntent(pdeleteIntent)
 
         val notificationIntent = Intent(this, MainActivity::class.java)
         notificationIntent.flags =
@@ -303,14 +295,25 @@ class MusicPlayerService : MediaBrowserServiceCompat() {
         builder?.setContentIntent(intent)
 
         startForeground(NOTIFICATION_ID, builder?.build())
-//        val mNotificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-//        mediaPlayer?.let {
-//            if (!it.isPlaying) {
-//                stopForeground(false)
-//                mNotificationManager.notify(NOTIFICATION_ID, builder?.build())
-//            }
-//        }
     }
+
+
+//    Variables, Types
+//    Functions
+//    Classes, Structs
+//    Properties
+//    Closures
+//    Protocols
+//    Auto-layout
+//    ARC
+//    GCD
+//    Persistent Storage (CoreData/Realm)
+//    Networking Communication (URLSession, AlamoreFire)
+//    JSON Parsing (Codable, ObjectMapper)
+//    UnitTest - Quick, Nimble
+//    UITest - Cucumberish, XCTestcase
+//    Reactive Programming (RXSwift, Combine)
+//    Code signing (certificate and provisioning)
 
     private fun cancelNotification() {
         val mNotificationManager =
@@ -347,7 +350,6 @@ class MusicPlayerService : MediaBrowserServiceCompat() {
         mediaPlayer?.release()
         mediaPlayer = null
         isUpdatingThread = false
-        stopForeground(true)
 //        cancelNotification()
         mediaSessionCompat.release()
         mediaSessionCompat.isActive = false

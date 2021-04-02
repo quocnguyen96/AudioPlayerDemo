@@ -23,11 +23,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun initObserver() {
         MusicPlayerService.playStatus.observe(this, Observer {
-            if (it) {
-                btn_playpause.setBackgroundResource(R.drawable.ic_pause)
-            } else {
-                btn_playpause.setBackgroundResource(R.drawable.ic_play)
-            }
+            btn_playpause.setBackgroundResource(if (it) R.drawable.ic_pause else R.drawable.ic_play)
         })
 
         MusicPlayerService.totalTime.observe(this, Observer {
@@ -48,18 +44,9 @@ class MainActivity : AppCompatActivity() {
         btn_forward.setOnClickListener { forward() }
         btn_rewind.setOnClickListener { rewind() }
 
-        sb_music.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-
+        sb_music.setOnSeekBarChangeListener(object : AbstractSeekbarChange {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                 if (fromUser) MusicPlayerService.mediaPlayer?.seekTo(progress)
-            }
-
-            override fun onStartTrackingTouch(seekBar: SeekBar?) {
-
-            }
-
-            override fun onStopTrackingTouch(seekBar: SeekBar?) {
-
             }
         })
     }
